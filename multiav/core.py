@@ -147,7 +147,7 @@ class CTrendmicroScanner(CAvScanner):
       cmd = self.build_cmd(path)
     except:
       pass
-    
+
     logdir = '/var/log/TrendMicro/SProtectLinux'
     logfile = logdir+'/Virus.' + time.strftime('%Y%m%d') + '.0001'
     call(cmd)
@@ -216,7 +216,7 @@ class CKasperskyScanner(CAvScanner):
     # This is why...
     self.speed = AV_SPEED_FAST
     self.pattern = r"\d+-\d+-\d+ \d+:\d+:\d+\W(.*)\Wdetected\W(.*)"
-    self.pattern2 = '(.*)(INFECTED|SUSPICION UDS:|SUSPICION HEUR:|WARNING HEUR:)(.*)'    
+    self.pattern2 = '(.*)(INFECTED|SUSPICION UDS:|SUSPICION HEUR:|WARNING HEUR:)(.*)'
 
   def build_cmd(self, path):
     parser = self.cfg_parser
@@ -226,7 +226,7 @@ class CKasperskyScanner(CAvScanner):
     ver = os.path.basename(scan_path)
     if ver == "kavscanner":
         args.extend(scan_args.split(" "))
-        args.append(path)      
+        args.append(path)
     elif ver == "kav":
         args.extend(scan_args.replace("$FILE", path).split(" "))
     return args
@@ -241,7 +241,7 @@ class CKasperskyScanner(CAvScanner):
         pass
 
     try: # stderr=devnull because kavscanner writes socket info
-        with open(os.devnull, "w") as devnull:      
+        with open(os.devnull, "w") as devnull:
             output = check_output(cmd, stderr=devnull)
 
     except CalledProcessError as e:
@@ -396,17 +396,17 @@ class CEScanScanner(CAvScanner):
   def scan(self, path):
     if self.pattern is None:
       Exception("Not implemented")
-    
+
     try:
       cmd = self.build_cmd(path)
     except: # There is no entry in the *.cfg file for this AV engine?
       pass
-    
+
     try:
       output = check_output(cmd)
     except CalledProcessError as e:
       output = e.output
-    
+
     matches = re.findall(self.pattern, output, re.IGNORECASE | re.MULTILINE)
     for match in matches:
       self.results[match[self.file_index].rstrip()] = match[self.malware_index]
@@ -445,8 +445,8 @@ class CAvgScanner(CAvScanner):
     # Considered fast because it requires the daemon to be running.
     # This is why...
     self.speed = AV_SPEED_ULTRA
-    self.pattern1 = "\>{0,1}(.*) \s+[a-z]+\s+[a-z]+\s+(.*)"
-    self.pattern2 = "\>{0,1}(.*) \s+[a-z]+\s+(.*)" #like this:Luhe.Fiha.A
+    self.pattern1 = "\>{0,1}(.*)  (.*)"
+    # self.pattern2 = "\>{0,1}(.*) \s+[a-z]+\s+(.*)" #like this:Luhe.Fiha.A
 
   def scan(self, path):
     cmd = self.build_cmd(path)
@@ -463,11 +463,11 @@ class CAvgScanner(CAvScanner):
     output = open(fname, "rb").read()
     os.unlink(fname)
 
-    matches1 = re.findall(self.pattern1, output, re.IGNORECASE|re.MULTILINE)
-    matches2 = re.findall(self.pattern2, output, re.IGNORECASE|re.MULTILINE)
-    matches = matches1 +matches2
+    matches = re.findall(self.pattern1, output, re.IGNORECASE|re.MULTILINE)
+    #matches2 = re.findall(self.pattern2, output, re.IGNORECASE|re.MULTILINE)
+    #matches = matches1 + matches2
     for match in matches:
-      if match[1] not in ["file"]:
+      if match[0] == path:
         self.results[match[0].split(':/')[0]] = match[1]
     return len(self.results) > 0
 
@@ -558,7 +558,7 @@ class CQuickHealScanner(CAvScanner):
     self.speed = AV_SPEED_FAST
     self.file_index = 1
     self.malware_index = 2
-    self.pattern = '(Scanning : |Archive  : )(.*)\nInfected[\s]+:[\s]+\((.*)\)'    
+    self.pattern = '(Scanning : |Archive  : )(.*)\nInfected[\s]+:[\s]+\((.*)\)'
 
   def build_cmd(self, path):
     parser = self.cfg_parser
@@ -578,7 +578,7 @@ class CQuickHealScanner(CAvScanner):
 
     try:
       cmd = self.build_cmd(path)
-    
+
     except: # There is no entry in the *.cfg file for this AV engine?
       pass
 
@@ -593,7 +593,7 @@ class CQuickHealScanner(CAvScanner):
     os.unlink(fname)
     matches = re.findall(self.pattern, output, re.IGNORECASE|re.MULTILINE)
     for match in matches:
-      self.results[match[self.file_index].rstrip('\r')] = match[self.malware_index]    
+      self.results[match[self.file_index].rstrip('\r')] = match[self.malware_index]
 
     return len(self.results) > 0
 
