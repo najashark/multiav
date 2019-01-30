@@ -6,6 +6,7 @@ import time
 import web
 from hashlib import md5, sha1, sha256
 from multiav.core import CMultiAV, AV_SPEED_ALL
+from time import gmtime, strftime
 
 urls = (
     '/', 'index',
@@ -47,8 +48,8 @@ class CDbSamples:
 
   def insert_sample(self, name, buf, report):
     infected = 0
-    for ret in report:
-      if report[ret] != {}:
+    for ret in report["scans"]:
+      if ret["detected"] == True:
         infected = 1
         break
 
@@ -160,16 +161,16 @@ class api_upload:
 
     # Calculate the hashes
     report = {
-        "hashes": {
-            "md5": md5(buf).hexdigest(),
-            "sha1": sha1(buf).hexdigest(),
-            "sha256": sha256(buf).hexdigest()
-        }
+      "md5": md5(buf).hexdigest(),
+      "sha1": sha1(buf).hexdigest(),
+      "sha256": sha256(buf).hexdigest(),
+      "scan_date": strftime("%Y-%m-%d %H:%M:%S", gmtime())
     }
 
     # Scan the file
     av = CMultiAV()
-    report.update(av.scan_buffer(buf))
+    res = av.scan_buffer(buf)
+    report.update({"scans": res})
 
     db_api = CDbSamples()
     db_api.insert_sample(filename, buf, report)
@@ -187,13 +188,12 @@ class api_upload_fast:
     buf = i["file_upload"].value
     filename = i["file_upload"].filename
 
-    # Calculate the hashes
+    # Calculate the hashes and scan_date
     report = {
-        "hashes": {
-            "md5": md5(buf).hexdigest(),
-            "sha1": sha1(buf).hexdigest(),
-            "sha256": sha256(buf).hexdigest()
-        }
+      "md5": md5(buf).hexdigest(),
+      "sha1": sha1(buf).hexdigest(),
+      "sha256": sha256(buf).hexdigest(),
+      "scan_date": strftime("%Y-%m-%d %H:%M:%S", gmtime())
     }
 
     # Scan the file
