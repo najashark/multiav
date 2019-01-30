@@ -87,7 +87,8 @@ class CAvScanner:
     self.cfg_parser = cfg_parser
     self.name = None
     self.speed = AV_SPEED_SLOW
-    self.results = {}
+    self.results = ''
+    self.version = ''
     self.pattern = None
     self.file_index = 0
     self.malware_index = 1
@@ -446,6 +447,7 @@ class CAvgScanner(CAvScanner):
     # This is why...
     self.speed = AV_SPEED_ULTRA
     self.pattern1 = "\>{0,1}(.*)  (.*)"
+    self.patternv = "Virus database release date: .*, (.*) \+"
     # self.pattern2 = "\>{0,1}(.*) \s+[a-z]+\s+(.*)" #like this:Luhe.Fiha.A
 
   def scan(self, path):
@@ -464,11 +466,13 @@ class CAvgScanner(CAvScanner):
     os.unlink(fname)
 
     matches = re.findall(self.pattern1, output, re.IGNORECASE|re.MULTILINE)
+    matchesv = re.findall(self.patternv, output, re.IGNORECASE|re.MULTILINE)
+    self.version = matchesv[0]
     #matches2 = re.findall(self.pattern2, output, re.IGNORECASE|re.MULTILINE)
     #matches = matches1 + matches2
     for match in matches:
       if match[0] == path:
-        self.results[match[0].split(':/')[0]] = match[1]
+        self.results = match[1]
     return len(self.results) > 0
 
 # -----------------------------------------------------------------------
@@ -515,8 +519,9 @@ class CFSecureScanner(CAvScanner):
 class CWindowsDefScanner(CAvScanner):
   def __init__(self, cfg_parser):
     CAvScanner.__init__(self, cfg_parser)
-    self.name = "WindowsDefender"
+    self.name = "Windows Defender"
     self.speed = AV_SPEED_FAST
+    self.version = check_output("exiftool /opt/windef/engine/mpengine.dll | grep 'Product Version Number' | awk '{print $5}'", shell=True).strip()
     self.pattern = ".* Scanning (.*?)\.{3}.*Threat (.*) identified."
 #EngineScanCallback(): Threat Ransom:MSIL/JigsawLocker.A identified.
 
@@ -545,7 +550,7 @@ class CWindowsDefScanner(CAvScanner):
     pattern = self.pattern
     matches = re.findall(pattern, output, re.IGNORECASE|re.MULTILINE|re.DOTALL)
     for match in matches:
-      self.results[match[self.file_index]] = match[self.malware_index]
+      self.results = match[self.malware_index]
     return len(self.results) > 0
 
 
@@ -648,9 +653,9 @@ class CMultiAV:
           newrunning.append(p)
       running = newrunning
 
-    results = {}
+    results = []
     while not q.empty():
-      results.update(q.get())
+      results.append(q.get())
     return results
 
   def scan(self, path, max_speed=AV_SPEED_ALL):
@@ -674,8 +679,13 @@ class CMultiAV:
       return results
 
     if av.speed <= max_speed:
-      av.scan(path)
-      results[av.name] = av.results
+      detected = av.scan(path)
+      results.update({
+        "name": av.name,
+        "version": av.version,
+        "detected": detected,
+        "result": av.results
+      })
 
     if q is not None:
       q.put(results)
