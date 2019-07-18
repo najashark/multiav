@@ -1,0 +1,16 @@
+#user@MultiAVServ:~$ cat /etc/systemd/system/multiav.service
+[Unit]
+Description=multiAV API service
+After=network.target
+StartLimitIntervalSec=0
+
+[Service]
+WorkingDirectory=/home/user/multiav/multiav
+Type=simple
+Restart=always
+RestartSec=1
+User=root
+ExecStart=/usr/bin/python /home/user/multiav/multiav/runserver.py
+
+[Install]
+WantedBy=multi-user.target
